@@ -1,4 +1,4 @@
-const V='zaqri-v2';
+const V='zaqri-v3';
 const SHELL=['./','index.html','styles.css','app.js','prayer.js','data.js','config.js','content.json','manifest.json','icon-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V&&k!=='zaqri-data').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
