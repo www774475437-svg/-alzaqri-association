@@ -21,10 +21,11 @@ const ICON={
  user:ic('<circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>'),
  help:ic('<circle cx="12" cy="12" r="8"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.7.4-1 .9-1 1.700M12 16.500v.5"/>'),
  lib:ic('<path d="M5 4v16M9 4v16M13 5l5 15"/>'),
+ chat:ic('<path d="M5 6h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-7l-4 3.500V16H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M8.500 10h7M8.500 12.800h4.500"/>'),
  shield:ic('<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>')
 };
 const PAGES=[
- ['donations','التبرعات والاشتراك','heart'],['member','بوابة العضو','user'],['zakat','الزكاة','coin'],
+ ['forum','منتدى آل الزوقري','chat'],['donations','التبرعات والاشتراك','heart'],['member','بوابة العضو','user'],['zakat','الزكاة','coin'],
  ['prayer','أوقات الصلاة','prayer'],['athkar','الأذكار','athkar'],['quran','القرآن الكريم','book'],
  ['hadiths','الأحاديث','scroll'],['library','المكتبة الإسلامية','lib'],['projects','المشاريع','build'],
  ['news','الأخبار','news'],['articles','المقالات','pen'],['report','التقرير المالي','chart'],
@@ -195,19 +196,72 @@ function pageHelp(){const q=[['كيف أشترك شهرياً؟','من صفحة 
   view.innerHTML='<div class="card">'+q.map(x=>'<details style="border-bottom:1px solid var(--line);padding:10px 0"><summary><b>'+x[0]+'</b></summary><p class="muted" style="margin:6px 0 0">'+x[1]+'</p></details>').join('')+'</div>'+
   '<a class="btn ghost" target="_blank" rel="noopener" href="'+esc(C.developer.link)+'">تواصل مع المطور</a>';}
 
+/* ---------- منتدى آل الزوقري (وضع المعاينة حتى تُضاف حسابات الأعضاء) ---------- */
+const FDEF={open:true,who:'all',hidden:false,auto24:true,gap:60,newRO:false,notify:true};
+const fset=()=>Object.assign({},FDEF,store.get('forum',{}));
+const fsave=o=>store.set('forum',Object.assign(fset(),o));
+const WHO={all:'الجميع',subs:'المشتركون والمشرفون',mods:'المشرفون فقط',dev:'المطور فقط'};
+const RULES=['الاحترام بين الأعضاء، وترك السبّ والتجريح.','الكلام فيما ينفع: شؤون الجمعية والقبيلة والتواصل بين أهلها.','يُمنع وضع الروابط الخارجية.','يُمنع وضع أرقام الهواتف.','لا صور في المنتدى، الرسائل نصية فقط.','يُمنع الإعلان والبيع وطلب المال من الأعضاء.','من خالف يُنبَّه أولاً، ثم يُوقف أو يُحظر بقرار المشرف.'];
+const MARK={dev:'<span class="mark dev">✓</span><span class="role">المطوّر</span>',mod:'<span class="mark mod">✓</span><span class="role">المشرف</span>',sub:'<span class="mark sub">✓</span>'};
+// فحص الرسالة قبل الإرسال: الروابط وأرقام الدول تُمنع، والأرقام الطويلة تذهب إلى «المشكوك فيها»
+function checkMsg(t){const n=String(t).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  if(/(https?:\/\/|www\.|t\.me\/|wa\.me\/|\b[a-z0-9-]+\.(com|net|org|me|io|app|co)\b)/i.test(n))return 'link';
+  if(/(\+|00)\s?\d[\d\s-]{6,}/.test(n))return 'phone';
+  if(/\d[\d\s-]{5,}\d/.test(n)&&n.replace(/\D/g,'').length>6)return 'doubt';
+  return 'ok';}
+window.checkMsg=checkMsg;
+const later=()=>alertBox('يعمل هذا الزر بعد إضافة حسابات الأعضاء');
+function pageForum(sub){if(sub==='admin')return pageForumAdmin();if(sub==='rules')return pageForumRules();
+  const s=fset(),canSend=s.open&&!s.hidden;
+  const sample=[
+   {n:C.developer.name,r:'dev',t:'مرحباً بكم في منتدى آل الزوقري. هنا يتواصل أبناء القبيلة وأعضاء الجمعية.',d:'نموذج'},
+   {n:'مشرف المنتدى',r:'mod',t:'نرجو قراءة قوانين المنتدى قبل المشاركة.',d:'نموذج'},
+   {n:'عضو مشترك',r:'sub',t:'جزاكم الله خيراً على هذا التطبيق.',d:'نموذج',q:'مرحباً بكم في منتدى آل الزوقري…'}];
+  view.innerHTML='<div class="forum"><div class="fhead"><div><h2>منتدى آل الزوقري</h2><span class="state'+(canSend?'':' off')+'">'+(s.hidden?'مخفي عن الأعضاء':s.open?'مفتوح · يرسل: '+WHO[s.who]:'الإرسال متوقف')+'</span></div>'+
+    '<div style="display:flex;gap:8px"><a class="ibtn" href="#/forum/rules" aria-label="القوانين">'+ICON.scroll+'</a><a class="ibtn" href="#/forum/admin" aria-label="تحكم المطور">'+ICON.shield+'</a></div></div>'+
+    '<div class="note">المنتدى الآن في وضع المعاينة: الرسائل الظاهرة نماذج لشكل المنتدى، والإرسال يعمل بعد إضافة حسابات الأعضاء.</div>'+
+    sample.map(m=>'<div class="msg"><div class="who"><span>'+esc(m.n)+'</span>'+MARK[m.r]+'<small>'+m.d+'</small></div>'+(m.q?'<div class="reply">'+esc(m.q)+'</div>':'')+'<p>'+esc(m.t)+'</p>'+
+      '<div class="acts"><button data-a>ردّ</button><button data-a>إبلاغ</button></div></div>').join('')+
+    '<div class="sw" style="border:0"><span>إشعارات المنتدى<small>الرد على رسالتك يصلك دائماً</small></span><input type="checkbox" id="fn"'+(s.notify?' checked':'')+'></div>'+
+    (canSend?'<div class="composer"><input placeholder="اكتب رسالتك…" disabled><button id="fl">تسجيل الدخول <span class="soon">قريباً</span></button></div>'
+            :'<div class="composer"><input placeholder="الإرسال متوقف الآن" disabled></div>')+'</div>';
+  view.querySelectorAll('[data-a]').forEach(b=>b.onclick=later);const fl=$('#fl');if(fl)fl.onclick=later;
+  $('#fn').onchange=e=>fsave({notify:e.target.checked});}
+function pageForumRules(){setTitle('قوانين المنتدى');
+  view.innerHTML='<div class="card forum"><h3>قوانين منتدى آل الزوقري</h3><ol class="rules">'+RULES.map(r=>'<li>'+r+'</li>').join('')+'</ol>'+
+    '<p class="muted" style="margin:0">الرابط الخارجي ورقم الهاتف بمفتاح الدولة يُمنعان تلقائياً: في المرة الأولى تنبيه، وفي الثانية يُجمَّد الحساب 5 ساعات.</p></div>'+
+    '<button class="btn ghost" id="er">تعديل القوانين (للمطور والمشرفين) <span class="soon">قريباً</span></button>';$('#er').onclick=later;}
+function pageForumAdmin(){setTitle('تحكم المنتدى');const s=fset();
+  const sw=(k,t,d)=>'<div class="sw"><span>'+t+(d?'<small>'+d+'</small>':'')+'</span><input type="checkbox" data-k="'+k+'"'+(s[k]?' checked':'')+'></div>';
+  const row=(t,d)=>'<a href="javascript:void 0" data-l><span>'+t+(d?'<br><small>'+d+'</small>':'')+'</span><small class="soon">قريباً</small></a>';
+  view.innerHTML='<div class="note">هذه الصفحة معاينة الآن. بعد إضافة الحسابات لا تظهر إلا للمطور والمشرفين، وتُطبَّق إعداداتها على الجميع.</div>'+
+   '<div class="card"><h3>الإرسال</h3>'+sw('open','المنتدى مفتوح للإرسال','عند الإيقاف يختفي مربع الكتابة، وتبقى الرسائل مقروءة')+
+     '<div style="padding:10px 2px"><span>من يستطيع الإرسال</span><div class="seg" id="who">'+Object.keys(WHO).map(k=>'<button data-v="'+k+'"'+(s.who===k?' class="on"':'')+'>'+WHO[k]+'</button>').join('')+'</div></div>'+
+     '<div style="padding:10px 2px"><span>المدة بين رسالتين للعضو</span><div class="seg three" id="gap">'+[[50,'50 ثانية'],[60,'دقيقة'],[300,'5 دقائق']].map(g=>'<button data-v="'+g[0]+'"'+(s.gap===g[0]?' class="on"':'')+'>'+g[1]+'</button>').join('')+'</div></div>'+
+     sw('newRO','العضو الجديد يقرأ فقط في يومه الأول')+'</div>'+
+   '<div class="card"><h3>للمطور وحده</h3>'+sw('auto24','إغلاق تلقائي بعد 24 ساعة','يتوقف الإرسال حتى تفتحه من جديد')+sw('hidden','إخفاء المنتدى عن الجميع','لا يراه إلا المطور والمشرفون')+
+     '<div class="list">'+row('المشرفون','إضافة مشرف أو إزالته')+'</div></div>'+
+   '<div class="card"><h3>المتابعة</h3><div class="list">'+row('الرسائل المشكوك فيها','أرقام طويلة تحتاج نظرك')+row('رسائل قيد المراجعة','قبول أو رفض، مع ملاحظة خاصة للعضو')+row('البلاغات','ما أبلغ عنه الأعضاء')+row('سجل التحذيرات والحظر','من حُذِّر أو حُظر، ومن حظره، ولماذا، وعلى أي رسالة')+'</div></div>'+
+   '<div class="card"><h3>الأعضاء</h3><div class="list">'+row('حظر عضو')+row('إيقاف عضو أو تجميده مدة')+row('وضع رسائل عضو تحت المراجعة')+row('علامة «مخالف»','يراها المطور والمشرفون فقط')+'</div></div>'+
+   '<div class="card"><h3>ثوابت المنتدى</h3><div class="row"><span>مدة بقاء الرسائل</span><small class="muted">30 يوماً ثم تُحذف</small></div><div class="row"><span>الصور</span><small class="muted">غير مسموحة</small></div><div class="row"><span>تعديل الرسالة</span><small class="muted">لا، الحذف فقط</small></div>'+
+     '<div class="row"><span>العلامات</span><span>'+MARK.dev+' '+MARK.mod+' '+MARK.sub+'<span class="role">مشترك</span></span></div></div>';
+  view.querySelectorAll('.sw input').forEach(i=>i.onchange=()=>fsave({[i.dataset.k]:i.checked}));
+  const seg=(id,key,num)=>view.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{fsave({[key]:num?+b.dataset.v:b.dataset.v});pageForumAdmin();});
+  seg('who','who');seg('gap','gap',1);view.querySelectorAll('[data-l]').forEach(a=>a.onclick=later);}
+
 /* ---------- التنقل ---------- */
 function setTitle(t){$('#title').textContent=t;}
 function route(){const parts=(location.hash.replace(/^#\/?/,'')||'').split('/'),p=parts[0]||'home',a=parts[1],num=a!=null&&a!==''?parseInt(a,10):null;
   setTitle(p==='home'?C.name:p==='more'?'المزيد':(TITLE[p]||C.name));
   $('#back').hidden=(p==='home');
-  document.querySelectorAll('#tabs a').forEach(x=>x.classList.toggle('on',x.dataset.tab===p||(x.dataset.tab==='more'&&!['home','prayer','quran','donations'].includes(p))));
+  document.querySelectorAll('#tabs a').forEach(x=>x.classList.toggle('on',x.dataset.tab===p||(x.dataset.tab==='more'&&!['home','prayer','forum','donations'].includes(p))));
   if(a==null)window.scrollTo(0,0);
   switch(p){case 'home':return pageHome();case 'more':return pageMore();case 'prayer':return pagePrayer();
     case 'athkar':return pageAthkar(a);case 'quran':return pageQuran(num);case 'hadiths':return pageHadiths(num);
     case 'library':case 'projects':case 'news':case 'articles':return pageList(p,num);
     case 'about':case 'history':return pageText(p);case 'report':return pageReport();
     case 'donations':return pageDonations();case 'zakat':return pageZakat();case 'member':return pageMember();
-    case 'admin':return pageAdmin();case 'help':return pageHelp();default:location.hash='#/';}}
+    case 'forum':return pageForum(a);case 'admin':return pageAdmin();case 'help':return pageHelp();default:location.hash='#/';}}
 $('#back').onclick=()=>{if(history.length>1)history.back();else location.hash='#/';};
 if(store.get('dark',false))document.documentElement.classList.add('dark');
 $('#theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');store.set('dark',d);};
