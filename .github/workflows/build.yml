@@ -5,25 +5,21 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  pages: write
-  id-token: write
 concurrency:
   group: build
   cancel-in-progress: true
 jobs:
   site:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: peaceiris/actions-gh-pages@v4
         with:
-          path: web
-      - id: deploy
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web
+          user_name: www774475437-svg
+          user_email: 338496743+www774475437-svg@users.noreply.github.com
+          commit_message: نشر الموقع
   apk:
     runs-on: ubuntu-latest
     steps:
